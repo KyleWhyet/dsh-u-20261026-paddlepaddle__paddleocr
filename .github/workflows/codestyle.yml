@@ -1,0 +1,41 @@
+name: PaddleOCR Code Style Check
+
+# NOTE: Job name `check-code-style` is the required status check context
+# configured in branch protection. Do not rename without updating settings.
+
+on:
+  pull_request: {}
+  push:
+    branches: ['main', 'release/*']
+
+jobs:
+  check-code-style:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        with:
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+      - id: detect
+        uses: ./.github/actions/detect-docs-only
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        if: steps.detect.outputs.docs_only != 'true'
+        with:
+          python-version: '3.10'
+      - name: Cache Python dependencies
+        if: steps.detect.outputs.docs_only != 'true'
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+      - name: Install Dependencies for Python
+        if: steps.detect.outputs.docs_only != 'true'
+        run: |
+          python -m pip install --upgrade pip
+          pip install "clang-format==13.0.0"
+      - uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd # v3.0.1
+        if: steps.detect.outputs.docs_only != 'true'
+        with:
+          extra_args: '--all-files'
